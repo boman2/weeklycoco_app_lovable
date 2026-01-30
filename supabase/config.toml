@@ -1,0 +1,7 @@
+project_id = "skcjbzfrlpzsztajbadz"
+
+[functions.ocr-price-tag]
+verify_jwt = false
+
+[functions.verify-price-registration]
+verify_jwt = false

@@ -1,0 +1,26 @@
+# 코코허브 robots.txt
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: *
+Allow: /
+
+# 사이트맵 위치
+Sitemap: https://weeklycoco.kr/sitemap.xml
+
+# 크롤링 제외 경로
+Disallow: /auth
+Disallow: /admin*
+Disallow: /register
+
+# 크롤링 딜레이 (서버 부하 방지)
+Crawl-delay: 1
