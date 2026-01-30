@@ -1,0 +1,238 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Base font size - 16px for readability */
+    font-size: 16px;
+    
+    /* Costco-inspired palette */
+    --background: 0 0% 97%;
+    --foreground: 220 20% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 20% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 20% 10%;
+
+    /* Costco Blue as Primary */
+    --primary: 220 100% 27%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Costco Red as Secondary/Accent */
+    --secondary: 352 85% 48%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 10% 46%;
+
+    --accent: 220 100% 95%;
+    --accent-foreground: 220 100% 27%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 13% 90%;
+    --input: 220 13% 90%;
+    --ring: 220 100% 27%;
+
+    --radius: 1rem;
+
+    /* Custom tokens */
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(220 100% 27%) 0%, hsl(220 100% 20%) 100%);
+    --gradient-secondary: linear-gradient(135deg, hsl(352 85% 48%) 0%, hsl(352 85% 38%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 14% 98%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(220 100% 27%) 0%, hsl(352 85% 48%) 100%);
+    
+    /* Shadows - softer for professional look */
+    --shadow-sm: 0 1px 2px 0 hsl(220 20% 10% / 0.04);
+    --shadow-md: 0 4px 16px -4px hsl(220 20% 10% / 0.08);
+    --shadow-lg: 0 12px 40px -12px hsl(220 20% 10% / 0.12);
+    --shadow-glow: 0 0 24px hsl(220 100% 27% / 0.25);
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 220 20% 8%;
+    --foreground: 0 0% 98%;
+
+    --card: 220 20% 12%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 220 20% 12%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 220 80% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 352 85% 55%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 220 20% 18%;
+    --muted-foreground: 220 10% 60%;
+
+    --accent: 220 80% 20%;
+    --accent-foreground: 220 80% 70%;
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 20% 20%;
+    --input: 220 20% 20%;
+    --ring: 220 80% 55%;
+
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    font-family: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, 'Noto Sans KR', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    line-height: 1.6;
+    font-size: 1rem;
+  }
+
+  /* Minimum font sizes for readability - only for elements without explicit sizing classes */
+  p:not([class*="text-"]), div:not([class*="text-"]) {
+    font-size: max(1rem, 16px);
+  }
+
+  /* Secondary/small text */
+  .text-xs {
+    font-size: max(0.75rem, 12px) !important;
+  }
+
+  .text-sm {
+    font-size: max(0.875rem, 14px) !important;
+  }
+
+  /* Ensure touch targets are at least 44x44px */
+  button, a, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Exception for small inline elements */
+  .inline-touch {
+    min-height: auto;
+    min-width: auto;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: var(--gradient-hero);
+  }
+
+  .card-shadow {
+    box-shadow: var(--shadow-md);
+  }
+
+  .card-shadow-lg {
+    box-shadow: var(--shadow-lg);
+  }
+
+  .glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .safe-bottom {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 5rem);
+  }
+
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Improved spacing */
+  .section-gap {
+    margin-bottom: 2rem;
+  }
+
+  /* Card with better padding */
+  .card-comfortable {
+    @apply p-5 rounded-2xl;
+    box-shadow: var(--shadow-md);
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200;
+    background-image: var(--gradient-primary);
+  }
+
+  .btn-secondary {
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary/90 transition-all duration-200;
+    background-image: var(--gradient-secondary);
+  }
+
+  .price-tag {
+    @apply font-bold text-secondary;
+  }
+
+  .price-original {
+    @apply text-muted-foreground line-through text-sm;
+  }
+
+  .badge-earned {
+    @apply ring-2 ring-primary ring-offset-2 ring-offset-background;
+  }
+
+  /* Budget warning box */
+  .budget-warning {
+    @apply flex items-center gap-2 p-3 rounded-xl;
+    background-color: hsl(0 72% 51% / 0.1);
+    color: hsl(0 72% 40%);
+  }
+
+  /* Search input with subtle background */
+  .search-input {
+    @apply w-full px-4 py-3 rounded-xl border border-border;
+    background-color: hsl(220 14% 96%);
+  }
+
+  .search-input:focus {
+    @apply ring-2 ring-primary/20 border-primary/50 outline-none;
+  }
+}
