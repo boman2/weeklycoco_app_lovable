@@ -193,14 +193,7 @@ const Index = () => {
             isDiscountPeriodActiveKST(latest.discount_period || undefined)
           );
 
-          return {
-            id: productId,
-            productId,
-            name: p?.name || productId,
-            nameKo: p?.name || productId,
-            category: p?.category || '',
-          
-const image =
+          const image =
   p?.product_image_url
     ? p.product_image_url
     : latest?.image_url
@@ -208,6 +201,16 @@ const image =
       : p?.image_url
         ? p.image_url
         : "/placeholder.svg";
+         
+          
+          return {
+            id: productId,
+            productId,
+            name: p?.name || productId,
+            nameKo: p?.name || productId,
+            category: p?.category || '',
+          
+
           
             currentPrice: hasActiveDiscount
               ? (latest?.current_price || 0)
