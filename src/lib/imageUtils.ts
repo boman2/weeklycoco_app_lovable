@@ -42,6 +42,10 @@ export function getOptimizedImageUrl(
   pathOrUrl: string | null | undefined,
   opts: OptimizeOptions = {}
 ): string {
+// ✅ 지금은 render(변환) 쓰면 403이 나므로 public URL만 사용
+  return getPublicImageUrl(pathOrUrl);
+}
+  
   const publicUrl = getPublicImageUrl(pathOrUrl);
   if (!publicUrl) return '/placeholder.svg';
   if (publicUrl === '/placeholder.svg') return publicUrl;
