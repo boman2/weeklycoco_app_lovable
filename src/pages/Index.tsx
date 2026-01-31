@@ -8,7 +8,8 @@ import { categories } from '@/data/mockData';
 import { supabase } from '@/integrations/supabase/client';
 import { isDiscountPeriodActiveKST } from '@/lib/discount';
 import SEOHead from '@/components/SEOHead';
-import { getPriceTagPublicUrl } from '@/lib/storage';
+import { getPublicImageUrl } from "@/lib/imageUtils";
+
 
 interface ProductStats {
   totalProducts: number;
