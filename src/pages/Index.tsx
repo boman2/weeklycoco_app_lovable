@@ -1,16 +1,14 @@
 import { useState, useEffect } from 'react';
-import { ChevronRight, TrendingDown, Tag, Heart, Star, MessageSquare, Flame } from 'lucide-react';
+import { ChevronRight, TrendingDown, Tag, Heart, Star, MessageSquare, Flame, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import SearchBar from '@/components/SearchBar';
-import CategoryChip from '@/components/CategoryChip';
 import ProductCard from '@/components/ProductCard';
 import AdBanner from '@/components/AdBanner';
-import { categories, stores } from '@/data/mockData';
+import { categories } from '@/data/mockData';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2 } from 'lucide-react';
 import { isDiscountPeriodActiveKST } from '@/lib/discount';
 import SEOHead from '@/components/SEOHead';
-import { getPriceTagPublicUrl } from "@/lib/storage"; // 파일 상단에 추가
+import { getPriceTagPublicUrl } from '@/lib/storage';
 
 interface ProductStats {
   totalProducts: number;
@@ -93,14 +91,14 @@ const Index = () => {
 
         // Category stats
         const catCounts: { [key: string]: number } = {};
-        categoryRes.data?.forEach((p) => {
+        categoryRes.data?.forEach((p: any) => {
           catCounts[p.category] = (catCounts[p.category] || 0) + 1;
         });
         setCategoryStats(Object.entries(catCounts).map(([category, count]) => ({ category, count })));
 
         // Discount products count (this week) - unique product IDs
         const discountRows = discountRes.data || [];
-        const uniqueDiscountProducts = new Set(discountRows.map((d) => d.product_id));
+        const uniqueDiscountProducts = new Set(discountRows.map((d: any) => d.product_id));
 
         setStats({
           totalProducts: totalRes.count || 0,
@@ -109,7 +107,8 @@ const Index = () => {
 
         // Likes count (used for Popular)
         const likeCounts: Record<string, number> = {};
-        likesRes.data?.forEach((l) => {
+        likesRes.data?.forEach((l: any) => {
+          if (!l.product_id) return;
           likeCounts[l.product_id] = (likeCounts[l.product_id] || 0) + 1;
         });
 
@@ -121,7 +120,7 @@ const Index = () => {
 
         // Combine likes first, then fallback to price history count
         const hasAnyLikes = Object.keys(likeCounts).length > 0;
-        
+
         let popularIdsTop50: string[];
         if (hasAnyLikes) {
           popularIdsTop50 = Object.entries(likeCounts)
@@ -129,7 +128,6 @@ const Index = () => {
             .slice(0, 50)
             .map(([productId]) => productId);
         } else {
-          // Fallback: use products with most price registrations
           popularIdsTop50 = Object.entries(priceHistoryCounts)
             .sort((a, b) => b[1] - a[1])
             .slice(0, 50)
@@ -192,39 +190,35 @@ const Index = () => {
             latest.discount_price > 0 &&
             isDiscountPeriodActiveKST(latest.discount_period || undefined)
           );
-const items = rows.map((p) => {
-  const productId = /* 기존 로직 */;
-  const latest = /* 기존 로직 */;
-  
-  const image =
-    p?.product_image_url
-      ? p.product_image_url
-      : latest?.image_url
-        ? getPriceTagPublicUrl(latest.image_url)
-        : p?.image_url
-          ? p.image_url
-          : "/placeholder.svg";
-         
-          
-  return {
-    id: productId,
-    productId,
-    name: p?.name || productId,
-    nameKo: p?.name || productId,
-    category: p?.category || '',
-    image, // ✅ 여기로 넣기
-          
 
-          
+          // ✅ 여기만 핵심: price_history.image_url 은 storage path라서 public URL로 변환
+          const image =
+            p?.product_image_url
+              ? p.product_image_url
+              : latest?.image_url
+                ? getPriceTagPublicUrl(latest.image_url)
+                : p?.image_url
+                  ? p.image_url
+                  : '/placeholder.svg';
+
+          return {
+            id: productId,
+            productId,
+            name: p?.name || productId,
+            nameKo: p?.name || productId,
+            category: p?.category || '',
+            image,
+
             currentPrice: hasActiveDiscount
               ? (latest?.current_price || 0)
               : (latest?.selling_price || latest?.current_price || 0),
+
             originalPrice: hasActiveDiscount ? latest?.selling_price : undefined,
             discountPrice: hasActiveDiscount ? latest?.discount_price : undefined,
             discountPeriod: hasActiveDiscount ? (latest?.discount_period || undefined) : undefined,
             unit: '1개',
             hasDiscount: hasActiveDiscount,
-            likeCount: likeCounts[productId] || 0,
+            likeCount: 0, // 이 값은 ProductCard에서 안 쓰면 상관없고, 쓰면 아래처럼 넣어도 됨
             reviewCount: reviewCounts[productId] || 0,
           };
         };
@@ -239,7 +233,7 @@ const items = rows.map((p) => {
         // Recent price changes (top 12)
         setRecentPriceChanges(recentIds.map(toCard).slice(0, 12));
 
-        // Popular products (top 6 by likes)
+        // Popular products (top 6 by likes/fallback)
         const popularProductsList = popularIdsTop50
           .slice(0, 6)
           .map(toCard)
@@ -254,7 +248,6 @@ const items = rows.map((p) => {
 
     const fetchDiscussionPosts = async () => {
       try {
-        // Fetch general posts (newest first)
         const { data: generalData } = await supabase
           .from('discussions')
           .select('id, title, image_url, user_id, created_at, category, linked_product_id')
@@ -262,7 +255,6 @@ const items = rows.map((p) => {
           .order('created_at', { ascending: false })
           .limit(5);
 
-        // Fetch deal posts (newest first)
         const { data: dealData } = await supabase
           .from('discussions')
           .select('id, title, image_url, user_id, created_at, category, linked_product_id')
@@ -271,32 +263,38 @@ const items = rows.map((p) => {
           .limit(5);
 
         const allPosts = [...(generalData || []), ...(dealData || [])];
-        
+
         if (allPosts.length > 0) {
-          const userIds = [...new Set(allPosts.map(p => p.user_id))];
-          const postIds = allPosts.map(p => p.id);
+          const userIds = [...new Set(allPosts.map((p: any) => p.user_id))];
+          const postIds = allPosts.map((p: any) => p.id);
 
           const [profilesRes, commentsRes, likesRes] = await Promise.all([
             supabase.from('user_profiles').select('id, nickname').in('id', userIds),
             supabase.from('discussion_comments').select('discussion_id').in('discussion_id', postIds),
-            supabase.from('discussion_likes').select('discussion_id').in('discussion_id', postIds)
+            supabase.from('discussion_likes').select('discussion_id').in('discussion_id', postIds),
           ]);
 
           const profileMap: Record<string, string> = {};
-          profilesRes.data?.forEach(p => { profileMap[p.id] = p.nickname || '익명'; });
+          profilesRes.data?.forEach((p: any) => {
+            profileMap[p.id] = p.nickname || '익명';
+          });
 
           const commentCounts: Record<string, number> = {};
-          commentsRes.data?.forEach(c => { commentCounts[c.discussion_id] = (commentCounts[c.discussion_id] || 0) + 1; });
+          commentsRes.data?.forEach((c: any) => {
+            commentCounts[c.discussion_id] = (commentCounts[c.discussion_id] || 0) + 1;
+          });
 
           const likeCounts: Record<string, number> = {};
-          likesRes.data?.forEach(l => { likeCounts[l.discussion_id] = (likeCounts[l.discussion_id] || 0) + 1; });
+          likesRes.data?.forEach((l: any) => {
+            likeCounts[l.discussion_id] = (likeCounts[l.discussion_id] || 0) + 1;
+          });
 
           const mapPost = (post: any): DiscussionPost => ({
             ...post,
             nickname: profileMap[post.user_id] || '익명',
             commentCount: commentCounts[post.id] || 0,
             likeCount: likeCounts[post.id] || 0,
-            linked_product_id: post.linked_product_id || null
+            linked_product_id: post.linked_product_id || null,
           });
 
           setGeneralPosts((generalData || []).map(mapPost));
@@ -312,16 +310,8 @@ const items = rows.map((p) => {
   }, []);
 
   const getCategoryCount = (categoryId: string) => {
-    const stat = categoryStats.find(s => s.category === categoryId);
+    const stat = categoryStats.find((s) => s.category === categoryId);
     return stat?.count || 0;
-  };
-
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const yy = String(date.getFullYear()).slice(-2);
-    const mm = String(date.getMonth() + 1).padStart(2, '0');
-    const dd = String(date.getDate()).padStart(2, '0');
-    return `${yy}${mm}${dd}`;
   };
 
   const PostItem = ({ post, category }: { post: DiscussionPost; category: string }) => (
@@ -330,30 +320,28 @@ const items = rows.map((p) => {
       className="flex items-center gap-2 p-2 rounded-lg bg-card hover:bg-muted transition-colors cursor-pointer"
     >
       <div className="w-10 h-10 flex-shrink-0 rounded-lg bg-muted overflow-hidden">
-
-
-{post.image_url ? (
-  <img
-    src={getPriceTagPublicUrl(post.image_url)}
-    alt=""
-    className="w-full h-full object-cover"
-  />
+        {post.image_url ? (
+          <img
+            src={getPriceTagPublicUrl(post.image_url)}
+            alt=""
+            className="w-full h-full object-cover"
+          />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-muted-foreground text-[10px]">
             📝
           </div>
         )}
       </div>
+
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1">
           {post.linked_product_id && (
             <Star className="h-3 w-3 text-amber-500 fill-amber-500 flex-shrink-0" />
           )}
-          <p className="text-sm font-medium text-foreground line-clamp-1">
-            {post.title}
-          </p>
+          <p className="text-sm font-medium text-foreground line-clamp-1">{post.title}</p>
         </div>
       </div>
+
       <div className="flex items-center gap-2 text-xs text-muted-foreground flex-shrink-0">
         {post.commentCount > 0 && (
           <span className="flex items-center gap-0.5">
@@ -373,243 +361,261 @@ const items = rows.map((p) => {
     <>
       <SEOHead />
       <div className="min-h-screen bg-background safe-bottom">
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-lg">
-        <div className="px-4 pt-4 pb-2">
-          <div className="flex items-center justify-between">
-            <a href="https://www.weeklycoco.kr" className="text-xl lg:text-2xl font-extrabold text-primary hover:opacity-80 transition-opacity">주간코코</a>
-            {/* PC 헤더 배너 - 로고 우측 */}
-            <AdBanner variant="header" />
-          </div>
-        </div>
-        <div className="px-4 pb-4">
-          <SearchBar onSearch={(q) => navigate(`/search?q=${q}`)} />
-        </div>
-      </header>
-
-      <div className="flex gap-6">
-        {/* Main Content */}
-        <main className="flex-1 min-w-0 px-4 pb-8 space-y-6 sm:space-y-8">
-
-        {/* Categories - 6x2 Grid */}
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-foreground">카테고리</h2>
-            <button 
-              onClick={() => navigate('/category')}
-              className="flex items-center gap-1 text-sm text-muted-foreground"
-            >
-              전체보기 <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-          <div className="grid grid-cols-6 gap-2">
-            {categories.slice(0, 12).map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => navigate(`/category?category_id=${encodeURIComponent(cat.id)}`)}
-                className="flex flex-col items-center justify-center rounded-xl px-1 py-2 bg-card hover:bg-muted transition-colors"
+        {/* Header */}
+        <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-lg">
+          <div className="px-4 pt-4 pb-2">
+            <div className="flex items-center justify-between">
+              <a
+                href="https://www.weeklycoco.kr"
+                className="text-xl lg:text-2xl font-extrabold text-primary hover:opacity-80 transition-opacity"
               >
-                <span className="text-lg md:text-2xl mb-0.5">{cat.icon}</span>
-                <span className="text-[10px] md:text-xs font-medium text-foreground text-center truncate w-full">{cat.nameKo.split('/')[0]}</span>
-                <span className="text-[9px] md:text-[10px] text-muted-foreground">({getCategoryCount(cat.id)})</span>
-              </button>
-            ))}
+                주간코코
+              </a>
+              {/* PC 헤더 배너 - 로고 우측 */}
+              <AdBanner variant="header" />
+            </div>
           </div>
-        </section>
-
-        {/* Discount Products (formerly Hot Deals) - Mobile: Horizontal cards like Bakery */}
-        <section className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Tag className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-bold text-foreground">할인상품</h2>
-            </div>
-            <button 
-              onClick={() => navigate('/search?filter=deals')}
-              className="flex items-center gap-1 text-sm text-primary font-medium"
-            >
-              더보기 <ChevronRight className="h-4 w-4" />
-            </button>
+          <div className="px-4 pb-4">
+            <SearchBar onSearch={(q) => navigate(`/search?q=${q}`)} />
           </div>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : discountProducts.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <p>이번 주 할인 상품이 없습니다</p>
-            </div>
-          ) : (
-            <>
-              {/* Mobile: Horizontal list, PC: Grid */}
-              <div className="space-y-3 md:hidden">
-                {discountProducts.slice(0, 4).map((product) => (
-                  <ProductCard key={product.productId} product={product} variant="horizontal" reviewCount={product.reviewCount} />
-                ))}
-              </div>
-              <div className="hidden md:grid md:grid-cols-6 gap-4">
-                {discountProducts.slice(0, 6).map((product) => (
-                  <ProductCard key={product.productId} product={product} variant="compact" reviewCount={product.reviewCount} />
-                ))}
-              </div>
-            </>
-          )}
-        </section>
+        </header>
 
-        {/* 모바일 인라인 배너 - 콘텐츠 사이 */}
-        <AdBanner variant="inline" className="md:hidden" />
-
-        {/* Popular Products Section - Thumbnail grid like Recent Price Changes */}
-        <section className="mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Flame className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-bold text-foreground">인기상품</h2>
-            </div>
-            <button 
-              onClick={() => navigate('/popular-products')}
-              className="flex items-center gap-1 text-sm text-primary font-medium"
-            >
-              더보기 <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : popularProducts.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <p>등록된 상품이 없습니다</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-3 md:grid-cols-6 gap-2 md:gap-3">
-              {popularProducts.map((product) => (
-                <div
-                  key={product.productId}
-                  onClick={() => navigate(`/product/${product.productId}`)}
-                  className="group cursor-pointer"
+        <div className="flex gap-6">
+          {/* Main Content */}
+          <main className="flex-1 min-w-0 px-4 pb-8 space-y-6 sm:space-y-8">
+            {/* Categories - 6x2 Grid */}
+            <section>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-foreground">카테고리</h2>
+                <button
+                  onClick={() => navigate('/category')}
+                  className="flex items-center gap-1 text-sm text-muted-foreground"
                 >
-                  <div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
-                    <img
-                      src={product.image}
-                      alt={product.nameKo}
-                      loading="lazy"
-                      decoding="async"
-                      className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                    />
-                    {/* Rank Badge */}
-                    <div className="absolute left-1 top-1 z-10 flex h-5 w-5 md:h-6 md:w-6 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-[10px] md:text-xs shadow-lg">
-                      {product.rank}
-                    </div>
-                    {product.hasDiscount && (
-                      <div className="absolute right-1 top-1 rounded bg-destructive px-1 py-0.5">
-                        <span className="text-[8px] md:text-[10px] font-bold text-destructive-foreground">할인</span>
+                  전체보기 <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="grid grid-cols-6 gap-2">
+                {categories.slice(0, 12).map((cat) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => navigate(`/category?category_id=${encodeURIComponent(cat.id)}`)}
+                    className="flex flex-col items-center justify-center rounded-xl px-1 py-2 bg-card hover:bg-muted transition-colors"
+                  >
+                    <span className="text-lg md:text-2xl mb-0.5">{cat.icon}</span>
+                    <span className="text-[10px] md:text-xs font-medium text-foreground text-center truncate w-full">
+                      {cat.nameKo.split('/')[0]}
+                    </span>
+                    <span className="text-[9px] md:text-[10px] text-muted-foreground">({getCategoryCount(cat.id)})</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            {/* Discount Products */}
+            <section className="mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Tag className="h-5 w-5 text-primary" />
+                  <h2 className="text-lg font-bold text-foreground">할인상품</h2>
+                </div>
+                <button
+                  onClick={() => navigate('/search?filter=deals')}
+                  className="flex items-center gap-1 text-sm text-primary font-medium"
+                >
+                  더보기 <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : discountProducts.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>이번 주 할인 상품이 없습니다</p>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-3 md:hidden">
+                    {discountProducts.slice(0, 4).map((product) => (
+                      <ProductCard
+                        key={product.productId}
+                        product={product}
+                        variant="horizontal"
+                        reviewCount={product.reviewCount}
+                      />
+                    ))}
+                  </div>
+                  <div className="hidden md:grid md:grid-cols-6 gap-4">
+                    {discountProducts.slice(0, 6).map((product) => (
+                      <ProductCard
+                        key={product.productId}
+                        product={product}
+                        variant="compact"
+                        reviewCount={product.reviewCount}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+            </section>
+
+            {/* 모바일 인라인 배너 */}
+            <AdBanner variant="inline" className="md:hidden" />
+
+            {/* Popular Products */}
+            <section className="mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Flame className="h-5 w-5 text-primary" />
+                  <h2 className="text-lg font-bold text-foreground">인기상품</h2>
+                </div>
+                <button
+                  onClick={() => navigate('/popular-products')}
+                  className="flex items-center gap-1 text-sm text-primary font-medium"
+                >
+                  더보기 <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : popularProducts.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>등록된 상품이 없습니다</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 md:grid-cols-6 gap-2 md:gap-3">
+                  {popularProducts.map((product) => (
+                    <div
+                      key={product.productId}
+                      onClick={() => navigate(`/product/${product.productId}`)}
+                      className="group cursor-pointer"
+                    >
+                      <div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
+                        <img
+                          src={product.image}
+                          alt={product.nameKo}
+                          loading="lazy"
+                          decoding="async"
+                          className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                        />
+                        <div className="absolute left-1 top-1 z-10 flex h-5 w-5 md:h-6 md:w-6 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-[10px] md:text-xs shadow-lg">
+                          {product.rank}
+                        </div>
+                        {product.hasDiscount && (
+                          <div className="absolute right-1 top-1 rounded bg-destructive px-1 py-0.5">
+                            <span className="text-[8px] md:text-[10px] font-bold text-destructive-foreground">할인</span>
+                          </div>
+                        )}
                       </div>
-                    )}
+                      <div className="mt-1.5 overflow-hidden">
+                        <h3 className="text-[10px] md:text-xs font-medium text-foreground truncate">
+                          {product.nameKo.length > 8 ? `${product.nameKo.slice(0, 8)}..` : product.nameKo}
+                          {product.reviewCount > 0 && (
+                            <span className="text-muted-foreground font-normal ml-0.5">({product.reviewCount})</span>
+                          )}
+                        </h3>
+                        <p className="text-xs md:text-sm font-bold text-primary mt-0.5">
+                          {product.currentPrice.toLocaleString()}원
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {/* Recent Price Updates */}
+            <section>
+              <div className="flex items-center justify-between mb-3">
+                <button onClick={() => navigate('/weekly-deals')} className="flex items-center gap-2 group">
+                  <TrendingDown className="h-5 w-5 text-success" />
+                  <h2 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
+                    최근 가격 변동
+                  </h2>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                </button>
+              </div>
+
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : recentPriceChanges.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>등록된 상품이 없습니다</p>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-3 md:hidden">
+                    {recentPriceChanges.slice(0, 6).map((product) => (
+                      <ProductCard
+                        key={product.productId}
+                        product={product}
+                        variant="horizontal"
+                        reviewCount={product.reviewCount}
+                      />
+                    ))}
                   </div>
-                  <div className="mt-1.5 overflow-hidden">
-                    <h3 className="text-[10px] md:text-xs font-medium text-foreground truncate">
-                      {product.nameKo.length > 8 ? `${product.nameKo.slice(0, 8)}..` : product.nameKo}
-                      {product.reviewCount > 0 && (
-                        <span className="text-muted-foreground font-normal ml-0.5">({product.reviewCount})</span>
+                  <div className="hidden md:grid md:grid-cols-6 gap-3">
+                    {recentPriceChanges.slice(0, 12).map((product) => (
+                      <ProductCard key={product.productId} product={product} variant="mini" reviewCount={product.reviewCount} />
+                    ))}
+                  </div>
+                </>
+              )}
+            </section>
+
+            {/* Discussion Posts */}
+            {(generalPosts.length > 0 || dealPosts.length > 0) && (
+              <section className="mt-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="rounded-2xl bg-card p-4 shadow-card">
+                    <div className="flex items-center justify-between mb-3">
+                      <button
+                        onClick={() => navigate('/discussion?category=general')}
+                        className="font-semibold text-foreground hover:text-primary transition-colors"
+                      >
+                        자유게시판 →
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      {generalPosts.length > 0 ? (
+                        generalPosts.map((post) => <PostItem key={post.id} post={post} category="general" />)
+                      ) : (
+                        <p className="text-sm text-muted-foreground py-2">아직 글이 없습니다</p>
                       )}
-                    </h3>
-                    <p className="text-xs md:text-sm font-bold text-primary mt-0.5">
-                      {product.currentPrice.toLocaleString()}원
-                    </p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl bg-card p-4 shadow-card">
+                    <div className="flex items-center justify-between mb-3">
+                      <button
+                        onClick={() => navigate('/discussion?category=deal')}
+                        className="font-semibold text-foreground hover:text-primary transition-colors"
+                      >
+                        할인정보 →
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      {dealPosts.length > 0 ? (
+                        dealPosts.map((post) => <PostItem key={post.id} post={post} category="deal" />)
+                      ) : (
+                        <p className="text-sm text-muted-foreground py-2">아직 글이 없습니다</p>
+                      )}
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </section>
+              </section>
+            )}
+          </main>
 
-        {/* Recent Price Updates - Mobile: Horizontal cards like Bakery */}
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <button 
-              onClick={() => navigate('/weekly-deals')}
-              className="flex items-center gap-2 group"
-            >
-              <TrendingDown className="h-5 w-5 text-success" />
-              <h2 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">최근 가격 변동</h2>
-              <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-            </button>
-          </div>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : recentPriceChanges.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <p>등록된 상품이 없습니다</p>
-            </div>
-          ) : (
-            <>
-              {/* Mobile: Horizontal list, PC: Grid */}
-              <div className="space-y-3 md:hidden">
-                {recentPriceChanges.slice(0, 6).map((product) => (
-                  <ProductCard key={product.productId} product={product} variant="horizontal" reviewCount={product.reviewCount} />
-                ))}
-              </div>
-              <div className="hidden md:grid md:grid-cols-6 gap-3">
-                {recentPriceChanges.slice(0, 12).map((product) => (
-                  <ProductCard key={product.productId} product={product} variant="mini" reviewCount={product.reviewCount} />
-                ))}
-              </div>
-            </>
-          )}
-        </section>
-
-        {/* Discussion Posts Section */}
-        {(generalPosts.length > 0 || dealPosts.length > 0) && (
-          <section className="mt-10">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* 자유게시판 */}
-              <div className="rounded-2xl bg-card p-4 shadow-card">
-                <div className="flex items-center justify-between mb-3">
-                  <button 
-                    onClick={() => navigate('/discussion?category=general')}
-                    className="font-semibold text-foreground hover:text-primary transition-colors"
-                  >
-                    자유게시판 →
-                  </button>
-                </div>
-                <div className="space-y-2">
-                  {generalPosts.length > 0 ? (
-                    generalPosts.map(post => <PostItem key={post.id} post={post} category="general" />)
-                  ) : (
-                    <p className="text-sm text-muted-foreground py-2">아직 글이 없습니다</p>
-                  )}
-                </div>
-              </div>
-
-              {/* 할인정보 */}
-              <div className="rounded-2xl bg-card p-4 shadow-card">
-                <div className="flex items-center justify-between mb-3">
-                  <button 
-                    onClick={() => navigate('/discussion?category=deal')}
-                    className="font-semibold text-foreground hover:text-primary transition-colors"
-                  >
-                    할인정보 →
-                  </button>
-                </div>
-                <div className="space-y-2">
-                  {dealPosts.length > 0 ? (
-                    dealPosts.map(post => <PostItem key={post.id} post={post} category="deal" />)
-                  ) : (
-                    <p className="text-sm text-muted-foreground py-2">아직 글이 없습니다</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
-        </main>
-
-        {/* PC 사이드바 광고 영역 */}
-        <AdBanner variant="sidebar" className="pr-4" />
-      </div>
+          {/* Sidebar banner */}
+          <AdBanner variant="sidebar" className="pr-4" />
+        </div>
       </div>
     </>
   );
