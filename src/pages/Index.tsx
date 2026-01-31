@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
 import { isDiscountPeriodActiveKST } from '@/lib/discount';
 import SEOHead from '@/components/SEOHead';
+import { getPriceTagPublicUrl } from "@/lib/storage"; // 파일 상단에 추가
 
 interface ProductStats {
   totalProducts: number;
@@ -313,8 +314,14 @@ const Index = () => {
       className="flex items-center gap-2 p-2 rounded-lg bg-card hover:bg-muted transition-colors cursor-pointer"
     >
       <div className="w-10 h-10 flex-shrink-0 rounded-lg bg-muted overflow-hidden">
-        {post.image_url ? (
-          <img src={post.image_url} alt="" className="w-full h-full object-cover" />
+
+
+{post.image_url ? (
+  <img
+    src={getPriceTagPublicUrl(post.image_url)}
+    alt=""
+    className="w-full h-full object-cover"
+  />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-muted-foreground text-[10px]">
             📝
