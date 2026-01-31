@@ -21,9 +21,6 @@ export const getOptimizedImageUrl = (
   
   const renderUrl = url;
 
-    '/storage/v1/object/public/',
-    '/storage/v1/render/image/public/'
-  );
 
   // Build query parameters
   const params = new URLSearchParams();
