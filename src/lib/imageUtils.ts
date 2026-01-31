@@ -1,46 +1,14 @@
-/**
- * Transforms Supabase Storage image URL to include resize parameters
- * Only applies to Supabase Storage URLs, returns other URLs unchanged
- */
-export const getOptimizedImageUrl = (
-  url: string | undefined,
-  options: { width?: number; height?: number; quality?: number } = {}
-): string => {
-  if (!url) return '/placeholder.svg';
-  
-  // Check if it's a Supabase Storage URL
-  const supabaseStoragePattern = /supabase\.co\/storage\/v1\/object\/public\//;
-  if (!supabaseStoragePattern.test(url)) {
-    return url;
-  }
+export function getPublicImageUrl(path: string, width?: number, height?: number) {
+  if (!path) return "";
 
-  const { width = 400, height, quality = 80 } = options;
-// Convert object URL to render URL for transformations
-// NOTE: Supabase render/image 엔드포인트가 403을 발생시키므로 사용하지 않는다.
-// object/public URL을 그대로 사용한다.
-  
-  const renderUrl = url;
+  // 이미 절대 URL이면 그대로 반환
+  if (path.startsWith("http")) return path;
 
+  const baseUrl = import.meta.env.VITE_SUPABASE_URL;
 
-  // Build query parameters
-  const params = new URLSearchParams();
-  params.set('width', width.toString());
-  if (height) {
-    params.set('height', height.toString());
-  }
-  params.set('quality', quality.toString());
-  params.set('resize', 'cover');
+  // object/public 경로 그대로 사용 (render/image 사용 안 함)
+  let url = `${baseUrl}/storage/v1/object/public/${path}`;
 
-  // Check if URL already has query params
-  const separator = renderUrl.includes('?') ? '&' : '?';
-  
-  return `${renderUrl}${separator}${params.toString()}`;
-};
-
-// Preset sizes for different card variants
-export const THUMBNAIL_SIZES = {
-  default: { width: 400, height: 300 },
-  compact: { width: 300, height: 300 },
-  horizontal: { width: 200, height: 200 },
-  mini: { width: 150, height: 150 },
-} as const;
+  // width/height는 무시 (render 안 쓰므로 의미 없음)
+  return url;
+}
