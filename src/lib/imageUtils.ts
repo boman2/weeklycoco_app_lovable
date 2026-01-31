@@ -15,9 +15,12 @@ export const getOptimizedImageUrl = (
   }
 
   const { width = 400, height, quality = 80 } = options;
+// Convert object URL to render URL for transformations
+// NOTE: Supabase render/image 엔드포인트가 403을 발생시키므로 사용하지 않는다.
+// object/public URL을 그대로 사용한다.
+  
+  const renderUrl = url;
 
-  // Convert object URL to render URL for transformations
-  const renderUrl = url.replace(
     '/storage/v1/object/public/',
     '/storage/v1/render/image/public/'
   );
