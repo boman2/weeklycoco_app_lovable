@@ -192,23 +192,27 @@ const Index = () => {
             latest.discount_price > 0 &&
             isDiscountPeriodActiveKST(latest.discount_period || undefined)
           );
-
-          const image =
-  p?.product_image_url
-    ? p.product_image_url
-    : latest?.image_url
-      ? getPriceTagPublicUrl(latest.image_url)
-      : p?.image_url
-        ? p.image_url
-        : "/placeholder.svg";
+const items = rows.map((p) => {
+  const productId = /* 기존 로직 */;
+  const latest = /* 기존 로직 */;
+  
+  const image =
+    p?.product_image_url
+      ? p.product_image_url
+      : latest?.image_url
+        ? getPriceTagPublicUrl(latest.image_url)
+        : p?.image_url
+          ? p.image_url
+          : "/placeholder.svg";
          
           
-          return {
-            id: productId,
-            productId,
-            name: p?.name || productId,
-            nameKo: p?.name || productId,
-            category: p?.category || '',
+  return {
+    id: productId,
+    productId,
+    name: p?.name || productId,
+    nameKo: p?.name || productId,
+    category: p?.category || '',
+    image, // ✅ 여기로 넣기
           
 
           
