@@ -199,7 +199,16 @@ const Index = () => {
             name: p?.name || productId,
             nameKo: p?.name || productId,
             category: p?.category || '',
-            image: p?.product_image_url || latest?.image_url || p?.image_url || '/placeholder.svg',
+          
+const image =
+  p?.product_image_url
+    ? p.product_image_url
+    : latest?.image_url
+      ? getPriceTagPublicUrl(latest.image_url)
+      : p?.image_url
+        ? p.image_url
+        : "/placeholder.svg";
+          
             currentPrice: hasActiveDiscount
               ? (latest?.current_price || 0)
               : (latest?.selling_price || latest?.current_price || 0),
