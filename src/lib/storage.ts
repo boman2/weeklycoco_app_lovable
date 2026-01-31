@@ -1,27 +1,32 @@
 // src/lib/storage.ts
-import { supabase } from "@/integrations/supabase/client";
 
-/**
- * price_history.image_url 에 저장된 값이
- * - "price-tags/test/a.jpg" 처럼 버킷 포함 경로거나
- * - "test/a.jpg" 처럼 버킷 내부 경로거나
- * - 이미 https://... 로 시작하는 전체 URL일 수도 있음
- *
- * 최종적으로는 "object/public" 방식으로만 반환해서 403(render) 회피
- */
-export function getPriceTagPublicUrl(pathOrUrl: string | null | undefined) {
-  if (!pathOrUrl) return "/placeholder.svg";
+const normalizePath = (p: string) => {
+  let path = (p || "").trim();
 
-  // 이미 절대 URL이면 그대로 사용
-  if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;
+  // 이미 전체 URL이면 그대로
+  if (/^https?:\/\//i.test(path)) return path;
 
-  // "price-tags/..." 형태면 bucket prefix 제거
-  const bucket = "price-tags";
-  const path = pathOrUrl.startsWith(`${bucket}/`)
-    ? pathOrUrl.slice(bucket.length + 1)
-    : pathOrUrl;
+  // 앞의 슬래시 제거
+  path = path.replace(/^\/+/, "");
 
-  // Supabase SDK로 public URL 생성 (object/public)
-  const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-  return data.publicUrl;
-}
+  // 혹시 "storage/v1/object/public/price-tags/..." 같은 걸 넣어도 처리
+  path = path.replace(/^storage\/v1\/object\/public\/price-tags\//i, "");
+
+  // DB에 "price-tags/..."로 들어간 경우도 처리
+  path = path.replace(/^price-tags\//i, "");
+
+  return path;
+};
+
+export const getPriceTagPublicUrl = (imageUrl?: string | null) => {
+  if (!imageUrl) return "";
+
+  const base = import.meta.env.VITE_SUPABASE_URL;
+  if (!base || !/^https?:\/\//i.test(base)) return "";
+
+  const path = normalizePath(imageUrl);
+  if (!path) return "";
+
+  // DB에 "test/manual-test.jpg" 형태로 들어와도 OK
+  return `${base}/storage/v1/object/public/price-tags/${path}`;
+};
